@@ -1,0 +1,16 @@
+{# Kepala halaman periode. Set `active` sebelum include: ringkasan, alternatif, bobot, peringkat. #}
+<div class="kepala">
+  <div>
+    <h1>{{ period.name }}</h1>
+    <p class="redup">Dibuat {{ period.created_at|tanggal }}. Status: {{ period.status|status_label }}.</p>
+  </div>
+</div>
+<ul class="tahap no-print" aria-label="Tahap seleksi">
+  <li><a href="{{ url_for('periods.overview', period_id=period.id) }}" {% if active == 'ringkasan' %}aria-current="page"{% endif %}>Ringkasan</a></li>
+  <li><a href="{{ url_for('periods.alternatives', period_id=period.id) }}" {% if active == 'alternatif' %}aria-current="page"{% endif %}>1. Alternatif</a>
+    <span class="status">({{ nav.selected ~ ' dipilih' if nav.selected else 'belum dipilih' }})</span></li>
+  <li><a href="{{ url_for('weighting.edit', period_id=period.id) }}" {% if active == 'bobot' %}aria-current="page"{% endif %}>2. Bobot AHP</a>
+    <span class="status">({{ 'konsisten' if nav.weights_ok else ('belum konsisten' if nav.has_weights else 'belum diisi') }})</span></li>
+  <li><a href="{{ url_for('ranking.show', period_id=period.id) }}" {% if active == 'peringkat' %}aria-current="page"{% endif %}>3. Peringkat</a>
+    <span class="status">({{ 'sudah dihitung' if nav.has_ranking else 'belum dihitung' }})</span></li>
+</ul>

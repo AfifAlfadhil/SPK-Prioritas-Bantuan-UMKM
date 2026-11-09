@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_components.html" import csrf with context %}
+{% block title %}Periode seleksi{% endblock %}
+{% block content %}
+<div class="kepala"><h1>Periode seleksi</h1></div>
+<p class="redup">Satu periode menyimpan salinan data UMKM, bobot kriteria, dan hasil peringkat untuk satu kali seleksi. Periode lama tetap utuh sebagai arsip.</p>
+
+{% if current_user.role == 'admin' %}
+<form method="post" action="{{ url_for('periods.create') }}" class="form-sempit">
+  {{ csrf() }}
+  <div class="field"><label for="nama">Nama periode baru</label>
+    <input id="nama" name="nama" type="text" maxlength="80" placeholder="Contoh: Bantuan alat usaha 2027" required>
+    <p class="catatan">
+      {% if total_umkm == 0 %}Belum ada data UMKM. Hubungi pengelola database terlebih dahulu.
+      {% else %}Membuat periode menyalin {{ total_umkm|angka(0) }} UMKM saat ini dan langsung menerapkan syarat awal: punya NIB dan usaha berjalan minimal 6 bulan.{% endif %}</p></div>
+  <button class="btn utama" type="submit" {{ 'disabled' if total_umkm == 0 }}>Buat periode</button>
+</form>
+{% endif %}
+
+<h2>Daftar periode</h2>
+{% if periods %}
+<div class="tabel"><table>
+  <thead><tr><th>Periode</th><th>Dibuat</th><th class="num">UMKM</th><th class="num">Lolos syarat awal</th><th class="num">Diperingkat</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for p in periods %}
+    <tr>
+      <td><a href="{{ url_for('periods.overview', period_id=p.id) }}">{{ p.name }}</a></td>
+      <td class="nowrap">{{ p.created_at|tanggal }}</td>
+      <td class="num">{{ p.total }}</td><td class="num">{{ p.lolos }}</td><td class="num">{{ p.ranked }}</td>
+      <td>{{ p.status|status_label }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<p>Belum ada periode seleksi. {% if current_user.role == 'admin' %}Buat periode di atas untuk mulai menyusun peringkat.{% else %}Minta administrator membuat periode terlebih dahulu.{% endif %}</p>
+{% endif %}
+{% endblock %}

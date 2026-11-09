@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Masuk{% endblock %}
+{% block content %}
+<form class="form-sempit" method="post" action="{{ url_for('auth.login') }}">
+  <h1>Masuk</h1>
+  {% if error %}<p class="pesan pesan-error" role="alert">{{ error }}</p>{% endif %}
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="field"><label for="username">Nama pengguna</label>
+    <input id="username" name="username" type="text" autocomplete="username" required autofocus></div>
+  <div class="field"><label for="password">Kata sandi</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required></div>
+  <button class="btn utama" type="submit">Masuk</button>
+</form>
+{% endblock %}

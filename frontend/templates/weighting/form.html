@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% from "_components.html" import csrf, cr_line, weight_table with context %}
+{% block title %}Bobot AHP | {{ period.name }}{% endblock %}
+{% block content %}
+{% set active = 'bobot' %}
+{% include "periods/_header.html" %}
+
+<p>Bandingkan tiap pasangan kriteria. Baca per baris: seberapa penting kriteria di baris dibanding kriteria di kolom.
+  Nilai 3 berarti sedikit lebih penting, 5 jelas lebih penting, 9 mutlak lebih penting. Nilai 1/3 berarti sebaliknya.</p>
+
+{% if errors %}
+<div class="pesan pesan-error" role="alert"><strong>Matriks belum bisa dihitung.</strong>
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<div class="dua">
+  <form method="post" novalidate>
+    {{ csrf() }}
+    <div class="tabel">
+      <table class="matriks">
+        <thead>
+          <tr><td></td>{% for c in criteria %}<th scope="col" title="{{ c.name }}">{{ c.code }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+        {% for i in range(n) %}
+          <tr>
+            <th scope="row">{{ criteria[i].code }} {{ criteria[i].name }}</th>
+            {% for j in range(n) %}
+              {% if i == j %}<td class="diag">1</td>
+              {% elif i < j %}
+                <td><select name="a_{{ i }}_{{ j }}" data-i="{{ i }}" data-j="{{ j }}"
+                            aria-label="{{ criteria[i].name }} dibanding {{ criteria[j].name }}">
+                  {% for lbl in saaty_labels %}<option value="{{ lbl }}" {{ 'selected' if lbl == labels[(i, j)] }}>{{ lbl }}</option>{% endfor %}
+                </select></td>
+              {% else %}
+                <td class="recip" id="r_{{ i }}_{{ j }}">{{ reciprocal(labels[(j, i)]) }}</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="baris-aksi">
+      <button class="btn utama" type="submit" name="aksi" value="simpan">Hitung bobot</button>
+      <button class="btn" type="submit" name="aksi" value="contoh" data-confirm-click="Ganti semua isian dengan matriks contoh?">Pakai matriks contoh</button>
+    </div>
+    <p class="catatan" style="margin-top:8px">Matriks contoh hanya untuk mencoba sistem. Nilai sebenarnya diisi tim penilai Dinas.</p>
+
+    <h3>Arti kode kriteria</h3>
+    <ul>
+      {% for c in criteria %}<li>{{ c.code }} {{ c.name }}, {{ 'makin kecil makin diprioritaskan' if c.type == 'cost' else 'makin besar makin diprioritaskan' }}</li>{% endfor %}
+    </ul>
+  </form>
+
+  <aside aria-labelledby="h-hasil">
+    <h2 id="h-hasil">Hasil perhitungan</h2>
+    {% if result %}
+      {{ cr_line(result.cr) }}
+      <p>
+        {% if result.consistent %}<strong>Konsisten.</strong> Bobot ini bisa dipakai untuk menghitung peringkat.
+        {% else %}<strong>Belum konsisten.</strong> CR harus 0,1 atau kurang. Perbaiki isian, lalu hitung ulang.{% endif %}
+      </p>
+      <dl>
+        <dt>λ maks</dt><dd>{{ result.lambda_max|angka(4) }}</dd>
+        <dt>CI</dt><dd>{{ result.ci|angka(4) }}</dd>
+        <dt>RI (n = 7)</dt><dd>{{ result.ri|angka(2) }}</dd>
+        <dt>CR</dt><dd>{{ result.cr|angka(4) }}</dd>
+      </dl>
+      <h3>Bobot kriteria</h3>
+      {{ weight_table(weight_rows) }}
+      {% if suspects %}
+      <h3>Isian yang paling menyimpang</h3>
+      <ul class="kecil">
+        {% for s in suspects %}<li>{{ s.pair }}: Anda mengisi <strong>{{ s.given }}</strong>, sedangkan isian lain condong ke sekitar <strong>{{ s.implied }}</strong>.</li>{% endfor %}
+      </ul>
+      {% endif %}
+    {% else %}
+      <p>Belum ada hasil. Pilih nilai perbandingan lalu klik Hitung bobot.</p>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

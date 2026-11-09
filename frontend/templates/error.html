@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h1>{{ message }}</h1>
+<p class="redup">Kode {{ code }}, {{ title }}.</p>
+<p><a href="{{ url_for('dashboard.index') }}">Kembali ke beranda</a></p>
+{% endblock %}

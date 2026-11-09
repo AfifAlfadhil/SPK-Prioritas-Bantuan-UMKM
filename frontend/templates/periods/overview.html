@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_components.html" import csrf with context %}
+{% block title %}{{ period.name }}{% endblock %}
+{% block content %}
+{% set active = 'ringkasan' %}
+{% include "periods/_header.html" %}
+
+<h2>Tahap berikutnya</h2>
+{% if not selected %}
+  <p>Belum ada UMKM yang dipilih untuk dihitung.</p>
+  <a class="btn utama" href="{{ url_for('periods.alternatives', period_id=period.id) }}">Pilih alternatif</a>
+{% elif not ahp %}
+  <p>{{ selected }} UMKM siap dihitung. Isi perbandingan antar-kriteria untuk mendapatkan bobot.</p>
+  <a class="btn utama" href="{{ url_for('weighting.edit', period_id=period.id) }}">Isi bobot AHP</a>
+{% elif not ahp.consistent %}
+  <p>Bobot belum konsisten (CR {{ ahp.cr|angka(4) }}, batasnya 0,1). Perbaiki perbandingan kriteria sebelum menghitung peringkat.</p>
+  <a class="btn utama" href="{{ url_for('weighting.edit', period_id=period.id) }}">Perbaiki bobot</a>
+{% elif not ranked %}
+  <p>Bobot sudah konsisten dan {{ selected }} UMKM siap diperingkat.</p>
+  <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">{{ csrf() }}<button class="btn utama" type="submit">Hitung peringkat</button></form>
+{% else %}
+  <p>Peringkat {{ ranked }} UMKM sudah tersedia.</p>
+  <div class="baris-aksi" style="margin-top:0">
+    <a class="btn utama" href="{{ url_for('ranking.show', period_id=period.id) }}">Lihat peringkat</a>
+  </div>
+{% endif %}
+
+<h2>Kondisi tahap</h2>
+<dl>
+  <dt>Alternatif</dt><dd>{{ selected }} dari {{ summary.lolos }} UMKM yang lolos ikut dihitung</dd>
+  <dt>Bobot AHP</dt><dd>{% if ahp %}CR {{ ahp.cr|angka(4) }}, {{ 'konsisten' if ahp.consistent else 'belum konsisten' }}{% else %}Belum diisi{% endif %}</dd>
+  <dt>Peringkat</dt><dd>{% if ranked %}{{ ranked }} UMKM sudah diperingkat{% else %}Belum dihitung{% endif %}</dd>
+</dl>
+
+<h2>Syarat awal</h2>
+<p>{{ summary.lolos }} UMKM lolos dan {{ summary.gugur }} gugur dari {{ summary.lolos + summary.gugur }} UMKM pada periode ini.</p>
+{% if reasons %}
+<div class="tabel" style="max-width:560px"><table>
+  <thead><tr><th>Alasan gugur</th><th class="num">UMKM</th></tr></thead>
+  <tbody>{% for r in reasons %}<tr><td>{{ r.reason }}</td><td class="num">{{ r.n }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+{% endblock %}

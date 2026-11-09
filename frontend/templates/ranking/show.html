@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_components.html" import csrf, weight_table with context %}
+{% block title %}Peringkat | {{ period.name }}{% endblock %}
+{% block content %}
+{% set active = 'peringkat' %}
+{% include "periods/_header.html" %}
+
+{% if not total %}
+  {% if not ahp %}
+    <h2>Bobot AHP belum dihitung</h2>
+    <p>Peringkat memakai bobot dari perbandingan antar-kriteria. Isi dulu perbandingannya.</p>
+    <a class="btn utama" href="{{ url_for('weighting.edit', period_id=period.id) }}">Isi bobot AHP</a>
+  {% elif not ahp.consistent %}
+    <h2>Bobot belum konsisten</h2>
+    <p>CR {{ ahp.cr|angka(4) }} melebihi batas 0,1, jadi bobot belum boleh dipakai. Perbaiki perbandingan kriteria.</p>
+    <a class="btn utama" href="{{ url_for('weighting.edit', period_id=period.id) }}">Perbaiki bobot</a>
+  {% elif not nav.selected %}
+    <h2>Belum ada alternatif yang dipilih</h2>
+    <p>Pilih minimal satu UMKM yang lolos syarat awal untuk dihitung.</p>
+    <a class="btn utama" href="{{ url_for('periods.alternatives', period_id=period.id) }}">Pilih alternatif</a>
+  {% else %}
+    <h2>Peringkat belum dihitung</h2>
+    <p>{{ nav.selected }} UMKM akan diperingkat dengan bobot AHP yang konsisten (CR {{ ahp.cr|angka(4) }}).</p>
+    <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">{{ csrf() }}<button class="btn utama" type="submit">Hitung peringkat</button></form>
+  {% endif %}
+{% else %}
+  <div class="dua">
+    <section aria-labelledby="h-w">
+      <h2 id="h-w">Bobot yang dipakai</h2>
+      {% set wrows = [] %}
+      {% for c in criteria %}{% set _ = wrows.append({'code': c.code, 'name': c.name, 'type': c.type, 'weight': ahp.weights[loop.index0]}) %}{% endfor %}
+      {{ weight_table(wrows) }}
+      <p class="catatan">CR {{ ahp.cr|angka(4) }}, konsisten.</p>
+      <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">{{ csrf() }}<button class="btn kecil" type="submit">Hitung ulang</button></form>
+    </aside>
+  </div>
+
+  <h2>Tabel peringkat</h2>
+  <form class="saring" method="get" role="search">
+    <div class="field lebar"><label for="q">Cari nama usaha atau ID</label><input id="q" name="q" type="search" value="{{ q }}"></div>
+    <div class="field"><label for="kecamatan">Kecamatan</label>
+      <select id="kecamatan" name="kecamatan"><option value="">Semua</option>
+        {% for k in kecamatan_options %}<option value="{{ k }}" {{ 'selected' if k == kecamatan }}>{{ k }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="jenis">Jenis usaha</label>
+      <select id="jenis" name="jenis"><option value="">Semua</option>
+        {% for j in jenis_options %}<option value="{{ j }}" {{ 'selected' if j == jenis }}>{{ j }}</option>{% endfor %}</select></div>
+    <button class="btn" type="submit">Saring</button>
+    {% if q or kecamatan or jenis %}<a href="{{ url_for('ranking.show', period_id=period.id) }}">Hapus filter</a>{% endif %}
+  </form>
+
+  {% if rows %}
+  <div class="tabel">
+    <table>
+      <thead><tr><th class="num">Peringkat</th><th>ID</th><th>Nama usaha</th><th>Jenis</th><th>Kecamatan</th>
+        <th class="num" title="Jarak ke solusi ideal positif">D+</th><th class="num" title="Jarak ke solusi ideal negatif">D-</th><th class="num">Nilai V</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr class="{{ 'rank-1' if r.rank == 1 }}">
+          <td class="num">{{ r.rank }}</td><td class="nowrap">{{ r.source_id }}</td><td>{{ r.nama_usaha }}</td>
+          <td>{{ r.jenis_usaha or '-' }}</td><td>{{ r.kecamatan or '-' }}</td>
+          <td class="num">{{ r.d_plus|angka(4) }}</td><td class="num">{{ r.d_minus|angka(4) }}</td><td class="num">{{ r.v|angka(4) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="catatan">Menampilkan {{ rows|length }} dari {{ matched }} UMKM{% if matched != total %} yang cocok (total {{ total }}){% endif %}.
+    {% if not show_all and matched > rows|length %}<a href="{{ url_for('ranking.show', period_id=period.id, q=q, kecamatan=kecamatan, jenis=jenis, tampil='semua') }}">Tampilkan semua</a>{% endif %}</p>
+  {% else %}
+  <p>Tidak ada UMKM yang cocok. Ubah kata kunci atau hapus filter.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

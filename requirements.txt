@@ -1,0 +1,10 @@
+fastapi>=0.110
+uvicorn>=0.29
+jinja2>=3.1
+python-multipart>=0.0.9
+itsdangerous>=2.1
+numpy>=2.0
+# hanya untuk tes:
+pytest>=8.0
+httpx>=0.27
+scipy>=1.11

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Beranda{% endblock %}
+{% block content %}
+<div class="kepala"><h1>Beranda</h1></div>
+
+<h2>Data UMKM</h2>
+{% if total == 0 %}
+  <p>Belum ada data UMKM. Silakan hubungi pengelola database.</p>
+{% else %}
+  <dl>
+    <dt>Tersimpan</dt><dd>{{ total|angka(0) }} UMKM</dd>
+  </dl>
+{% endif %}
+<div class="baris-aksi">
+  <a class="btn" href="{{ url_for('umkm.index') }}">Lihat data</a>
+</div>
+
+<h2>Periode seleksi</h2>
+{% if periods %}
+<div class="tabel"><table>
+  <thead><tr><th>Periode</th><th class="num">Lolos</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for p in periods %}
+    <tr>
+      <td><a href="{{ url_for('periods.overview', period_id=p.id) }}">{{ p.name }}</a><span class="sub">{{ p.created_at|tanggal }}</span></td>
+      <td class="num">{{ p.lolos }} dari {{ p.total }}</td>
+      <td>{{ p.status|status_label }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+  <p>Belum ada periode. Satu periode berisi salinan data UMKM, bobot kriteria, dan hasil peringkat untuk satu kali seleksi.</p>
+{% endif %}
+<p><a href="{{ url_for('periods.index') }}">{{ 'Semua periode' if periods else 'Buat periode pertama' }}</a></p>
+{% endblock %}

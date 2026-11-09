@@ -1,0 +1,30 @@
+{# Impor dengan: {% from "_components.html" import ... with context %} #}
+
+{% macro csrf() %}<input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro pagination(page, pages, endpoint) %}
+{% if pages > 1 %}
+<p class="halaman" aria-label="Halaman">
+  {% if page > 1 %}<a href="{{ url_for(endpoint, **dict(query, hal=page - 1)) }}">Sebelumnya</a>{% endif %}
+  <span>Halaman {{ page }} dari {{ pages }}</span>
+  {% if page < pages %}<a href="{{ url_for(endpoint, **dict(query, hal=page + 1)) }}">Berikutnya</a>{% endif %}
+</p>
+{% endif %}
+{% endmacro %}
+
+{# Tabel bobot kriteria. rows: code, name, type, weight #}
+{% macro weight_table(rows) %}
+<div class="tabel"><table>
+  <thead><tr><th>Kode</th><th>Kriteria</th><th>Jenis</th><th class="num">Bobot</th></tr></thead>
+  <tbody>{% for r in rows %}
+    <tr><td>{{ r.code }}</td><td>{{ r.name }}</td><td>{{ 'cost' if r.type == 'cost' else 'benefit' }}</td><td class="num">{{ r.weight|persen(1) }}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% endmacro %}
+
+{# Satu baris hasil konsistensi: angka CR, batas, dan putusannya. #}
+{% macro cr_line(cr) %}
+<p class="cr">CR {{ cr|angka(4) }} (batas 0,1):
+  {% if cr <= 0.1 %}<span class="st-ok">konsisten</span>{% else %}<span class="st-bad">belum konsisten</span>{% endif %}</p>
+{% endmacro %}
+

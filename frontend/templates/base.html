@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Beranda{% endblock %} | SPK Bantuan UMKM</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<a class="loncat" href="#isi">Langsung ke isi halaman</a>
+<header class="atas">
+  <div class="isi">
+    <a class="nama" href="{{ url_for('dashboard.index') }}">SPK Bantuan UMKM Surakarta</a>
+    {% if current_user %}
+    <nav class="menu" aria-label="Menu utama">
+      <a href="{{ url_for('dashboard.index') }}" {% if area == 'dashboard' %}aria-current="page"{% endif %}>Beranda</a>
+      <a href="{{ url_for('umkm.index') }}" {% if area == 'umkm' %}aria-current="page"{% endif %}>Data UMKM</a>
+      <a href="{{ url_for('periods.index') }}" {% if area in ('periods', 'weighting', 'ranking') %}aria-current="page"{% endif %}>Periode seleksi</a>
+    </nav>
+    <span class="akun">{{ current_user.display_name }} ({{ current_user.role|role_label }}) |
+      <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="tautan" type="submit">Keluar</button></form></span>
+    {% endif %}
+  </div>
+</header>
+<main id="isi" class="isi">
+  {% for f in flashes %}
+    <p class="pesan pesan-{{ f.category }}" role="status">{{ f.text }}</p>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
