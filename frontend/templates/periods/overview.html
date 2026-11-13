@@ -5,39 +5,121 @@
 {% set active = 'ringkasan' %}
 {% include "periods/_header.html" %}
 
-<h2>Tahap berikutnya</h2>
-{% if not selected %}
-  <p>Belum ada UMKM yang dipilih untuk dihitung.</p>
-  <a class="btn utama" href="{{ url_for('periods.alternatives', period_id=period.id) }}">Pilih alternatif</a>
-{% elif not ahp %}
-  <p>{{ selected }} UMKM siap dihitung. Isi perbandingan antar-kriteria untuk mendapatkan bobot.</p>
-  <a class="btn utama" href="{{ url_for('weighting.edit', period_id=period.id) }}">Isi bobot AHP</a>
-{% elif not ahp.consistent %}
-  <p>Bobot belum konsisten (CR {{ ahp.cr|angka(4) }}, batasnya 0,1). Perbaiki perbandingan kriteria sebelum menghitung peringkat.</p>
-  <a class="btn utama" href="{{ url_for('weighting.edit', period_id=period.id) }}">Perbaiki bobot</a>
-{% elif not ranked %}
-  <p>Bobot sudah konsisten dan {{ selected }} UMKM siap diperingkat.</p>
-  <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">{{ csrf() }}<button class="btn utama" type="submit">Hitung peringkat</button></form>
-{% else %}
-  <p>Peringkat {{ ranked }} UMKM sudah tersedia.</p>
-  <div class="baris-aksi" style="margin-top:0">
-    <a class="btn utama" href="{{ url_for('ranking.show', period_id=period.id) }}">Lihat peringkat</a>
+<!-- Langkah Selanjutnya (Action Card) -->
+<div class="card action-banner-card">
+  <div class="action-banner-inner">
+    <div>
+      <h3 class="action-banner-title">Langkah Selanjutnya</h3>
+      {% if not selected %}
+        <p class="action-banner-desc">Belum ada alternatif UMKM yang dipilih untuk dihitung dalam seleksi periode ini.</p>
+      {% elif not ahp %}
+        <p class="action-banner-desc"><strong>{{ selected }} UMKM</strong> siap dihitung. Isi perbandingan berpasangan kriteria untuk menentukan bobot AHP.</p>
+      {% elif not ahp.consistent %}
+        <p class="action-banner-desc">Bobot AHP belum konsisten (CR = {{ ahp.cr|angka(4) }}, ambang batas &le; 0,1). Perbaiki perbandingan kriteria sebelum perankingan.</p>
+      {% elif not ranked %}
+        <p class="action-banner-desc">Bobot AHP konsisten dan <strong>{{ selected }} UMKM</strong> siap dihitung peringkat prioritasnya dengan metode TOPSIS.</p>
+      {% else %}
+        <p class="action-banner-desc">Pemeringkatan terhadap <strong>{{ ranked }} UMKM</strong> telah selesai dihitung dan siap digunakan sebagai dasar keputusan.</p>
+      {% endif %}
+    </div>
+
+    <div class="action-banner-button">
+      {% if not selected %}
+        <a class="btn btn-primary" href="{{ url_for('periods.alternatives', period_id=period.id) }}">Pilih Alternatif UMKM</a>
+      {% elif not ahp %}
+        <a class="btn btn-primary" href="{{ url_for('weighting.edit', period_id=period.id) }}">Isi Bobot Kriteria AHP</a>
+      {% elif not ahp.consistent %}
+        <a class="btn btn-primary" href="{{ url_for('weighting.edit', period_id=period.id) }}">Perbaiki Bobot AHP</a>
+      {% elif not ranked %}
+        <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">
+          {{ csrf() }}
+          <button class="btn btn-primary" type="submit">Hitung Peringkat TOPSIS</button>
+        </form>
+      {% else %}
+        <a class="btn btn-primary" href="{{ url_for('ranking.show', period_id=period.id) }}">Lihat Tabel Peringkat</a>
+      {% endif %}
+    </div>
   </div>
-{% endif %}
+</div>
 
-<h2>Kondisi tahap</h2>
-<dl>
-  <dt>Alternatif</dt><dd>{{ selected }} dari {{ summary.lolos }} UMKM yang lolos ikut dihitung</dd>
-  <dt>Bobot AHP</dt><dd>{% if ahp %}CR {{ ahp.cr|angka(4) }}, {{ 'konsisten' if ahp.consistent else 'belum konsisten' }}{% else %}Belum diisi{% endif %}</dd>
-  <dt>Peringkat</dt><dd>{% if ranked %}{{ ranked }} UMKM sudah diperingkat{% else %}Belum dihitung{% endif %}</dd>
-</dl>
+<div class="grid-2-col">
+  <!-- Status Progres Tahapan -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Kondisi Tahapan Seleksi</h3>
+    </div>
+    <div class="status-summary-list">
+      <div class="summary-item">
+        <span class="summary-label">1. Alternatif UMKM:</span>
+        <span class="summary-value">
+          {% if selected %}
+            <span class="badge badge-success">{{ selected }} UMKM dipilih</span>
+            <span class="text-muted">(dari {{ summary.lolos }} yang memenuhi syarat)</span>
+          {% else %}
+            <span class="badge badge-neutral">Belum ada alternatif dipilih</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">2. Pembobotan AHP:</span>
+        <span class="summary-value">
+          {% if ahp %}
+            <span class="badge {% if ahp.consistent %}badge-success{% else %}badge-error{% endif %}">
+              CR = {{ ahp.cr|angka(4) }} ({{ 'Konsisten' if ahp.consistent else 'Belum Konsisten' }})
+            </span>
+          {% else %}
+            <span class="badge badge-neutral">Belum diisi</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">3. Perankingan TOPSIS:</span>
+        <span class="summary-value">
+          {% if ranked %}
+            <span class="badge badge-success">{{ ranked }} UMKM telah diperingkat</span>
+          {% else %}
+            <span class="badge badge-neutral">Belum dihitung</span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
 
-<h2>Syarat awal</h2>
-<p>{{ summary.lolos }} UMKM lolos dan {{ summary.gugur }} gugur dari {{ summary.lolos + summary.gugur }} UMKM pada periode ini.</p>
-{% if reasons %}
-<div class="tabel" style="max-width:560px"><table>
-  <thead><tr><th>Alasan gugur</th><th class="num">UMKM</th></tr></thead>
-  <tbody>{% for r in reasons %}<tr><td>{{ r.reason }}</td><td class="num">{{ r.n }}</td></tr>{% endfor %}</tbody>
-</table></div>
-{% endif %}
+  <!-- Evaluasi Syarat Awal -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Pemeriksaan Syarat Awal</h3>
+    </div>
+    <p class="text-muted" style="font-size:0.875rem; margin-bottom:12px;">
+      Syarat administrasi: Wajib memiliki Nomor Induk Berusaha (NIB) dan lama usaha minimal 6 bulan.
+    </p>
+
+    <div class="metric-badge-group">
+      <span class="badge badge-success badge-lg">{{ summary.lolos }} Lolos Syarat</span>
+      <span class="badge badge-error badge-lg">{{ summary.gugur }} Tidak Memenuhi</span>
+      <span class="badge badge-neutral badge-lg">Total {{ summary.lolos + summary.gugur }} UMKM</span>
+    </div>
+
+    {% if reasons %}
+    <div class="table-container" style="margin-top:14px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Alasan Tidak Memenuhi Syarat</th>
+            <th class="num">Jumlah UMKM</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reasons %}
+          <tr>
+            <td>{{ r.reason }}</td>
+            <td class="num font-numeric"><strong>{{ r.n }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

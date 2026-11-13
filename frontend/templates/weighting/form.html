@@ -1,83 +1,233 @@
 {% extends "base.html" %}
 {% from "_components.html" import csrf, cr_line, weight_table with context %}
-{% block title %}Bobot AHP | {{ period.name }}{% endblock %}
+{% block title %}Bobot Kriteria AHP | {{ period.name }}{% endblock %}
 {% block content %}
 {% set active = 'bobot' %}
 {% include "periods/_header.html" %}
 
-<p>Bandingkan tiap pasangan kriteria. Baca per baris: seberapa penting kriteria di baris dibanding kriteria di kolom.
-  Nilai 3 berarti sedikit lebih penting, 5 jelas lebih penting, 9 mutlak lebih penting. Nilai 1/3 berarti sebaliknya.</p>
+{% set suspect_map = {} %}
+{% if suspects %}
+  {% for s in suspects %}
+    {% set _ = suspect_map.update({(s.i, s.j): s}) %}
+  {% endfor %}
+{% endif %}
+
+<div class="page-header" style="margin-bottom: 16px;">
+  <div>
+    <h2 class="page-title" style="font-size: 1.25rem;">Penentuan Bobot Kriteria (Metode AHP)</h2>
+    <p class="page-desc">
+      Tentukan prioritas kepentingan antar-kriteria bantuan melalui perbandingan berpasangan (pairwise comparison). Anda dapat menggunakan <strong>Mode Slider Interaktif</strong> atau <strong>Mode Tabel Matriks</strong>.
+    </p>
+  </div>
+</div>
 
 {% if errors %}
-<div class="pesan pesan-error" role="alert"><strong>Matriks belum bisa dihitung.</strong>
-  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+<div class="alert alert-error" role="alert">
+  <strong>Matriks belum dapat dihitung:</strong>
+  <ul style="margin:4px 0 0; padding-left:20px;">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
 {% endif %}
 
 <div class="dua">
-  <form method="post" novalidate>
+  <form method="post" novalidate id="ahp-form">
     {{ csrf() }}
-    <div class="tabel">
-      <table class="matriks">
-        <thead>
-          <tr><td></td>{% for c in criteria %}<th scope="col" title="{{ c.name }}">{{ c.code }}</th>{% endfor %}</tr>
-        </thead>
-        <tbody>
-        {% for i in range(n) %}
-          <tr>
-            <th scope="row">{{ criteria[i].code }} {{ criteria[i].name }}</th>
-            {% for j in range(n) %}
-              {% if i == j %}<td class="diag">1</td>
-              {% elif i < j %}
-                <td><select name="a_{{ i }}_{{ j }}" data-i="{{ i }}" data-j="{{ j }}"
-                            aria-label="{{ criteria[i].name }} dibanding {{ criteria[j].name }}">
-                  {% for lbl in saaty_labels %}<option value="{{ lbl }}" {{ 'selected' if lbl == labels[(i, j)] }}>{{ lbl }}</option>{% endfor %}
-                </select></td>
-              {% else %}
-                <td class="recip" id="r_{{ i }}_{{ j }}">{{ reciprocal(labels[(j, i)]) }}</td>
-              {% endif %}
-            {% endfor %}
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    <div class="baris-aksi">
-      <button class="btn utama" type="submit" name="aksi" value="simpan">Hitung bobot</button>
-      <button class="btn" type="submit" name="aksi" value="contoh" data-confirm-click="Ganti semua isian dengan matriks contoh?">Pakai matriks contoh</button>
-    </div>
-    <p class="catatan" style="margin-top:8px">Matriks contoh hanya untuk mencoba sistem. Nilai sebenarnya diisi tim penilai Dinas.</p>
 
-    <h3>Arti kode kriteria</h3>
-    <ul>
-      {% for c in criteria %}<li>{{ c.code }} {{ c.name }}, {{ 'makin kecil makin diprioritaskan' if c.type == 'cost' else 'makin besar makin diprioritaskan' }}</li>{% endfor %}
-    </ul>
+    <!-- Pengalih Mode Tampilan: Slider vs Tabel -->
+    <div class="mode-switcher-wrap">
+      <div class="mode-switcher" role="tablist" aria-label="Pilihan mode input perbandingan">
+        <button type="button" class="mode-btn is-active" id="btn-mode-slider" role="tab" aria-selected="true" aria-controls="view-slider">
+          Mode Slider Interaktif
+        </button>
+        <button type="button" class="mode-btn" id="btn-mode-matrix" role="tab" aria-selected="false" aria-controls="view-matrix">
+          Mode Tabel Matriks (Klasik)
+        </button>
+      </div>
+    </div>
+
+    <!-- TAMPILAN 1: MODE SLIDER INTERAKTIF -->
+    <div id="view-slider" class="view-panel is-active" role="tabpanel" aria-labelledby="btn-mode-slider">
+      <div class="card slider-intro-card">
+        <p class="slider-guide-text">
+          <strong>Panduan Pengisian:</strong> Geser slider ke arah kriteria yang dinilai lebih diprioritaskan. Titik tengah (1:1) menandakan kedua kriteria memiliki derajat kepentingan yang seimbang.
+        </p>
+        <div class="slider-filter-wrapper">
+          <span class="filter-title">Filter berdasarkan kriteria:</span>
+          <div class="filter-chips-list" role="toolbar" aria-label="Saring kriteria">
+            <button type="button" class="chip is-active" data-filter="all">Semua Pasangan (21)</button>
+            {% for c in criteria[:-1] %}
+              <button type="button" class="chip" data-filter="{{ loop.index0 }}">{{ c.code }} {{ c.name }}</button>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="ahp-cards-list">
+        {% for i in range(n) %}
+          {% for j in range(i + 1, n) %}
+            {% set susp = suspect_map.get((i, j)) %}
+            {% set cur_val = labels[(i, j)]|saaty_to_slider %}
+            <div class="card ahp-card {% if susp %}has-suspect{% endif %}" 
+                 data-pair-i="{{ i }}" data-pair-j="{{ j }}"
+                 data-name-left="{{ criteria[i].name }}" data-code-left="{{ criteria[i].code }}"
+                 data-name-right="{{ criteria[j].name }}" data-code-right="{{ criteria[j].code }}"
+                 id="card_{{ i }}_{{ j }}">
+              
+              <div class="ahp-card-top">
+                <div class="crit-badge crit-left">
+                  <span class="crit-code">{{ criteria[i].code }}</span>
+                  <span class="crit-name">{{ criteria[i].name }}</span>
+                </div>
+                <div class="vs-pill">vs</div>
+                <div class="crit-badge crit-right">
+                  <span class="crit-code">{{ criteria[j].code }}</span>
+                  <span class="crit-name">{{ criteria[j].name }}</span>
+                </div>
+              </div>
+
+              {% if susp %}
+              <div class="suspect-hint">
+                <span class="suspect-text">Penyimpangan Konsistensi: Pilihan saat ini <strong>{{ susp.given }}</strong>, estimasi seimbang <strong>{{ susp.implied }}</strong>.</span>
+                <button type="button" class="btn btn-secondary btn-xs btn-apply-implied" data-target-i="{{ i }}" data-target-j="{{ j }}" data-val="{{ susp.implied }}">Terapkan Rekomendasi ({{ susp.implied }})</button>
+              </div>
+              {% endif %}
+
+              <div class="ahp-slider-box">
+                <div class="slider-labels-row">
+                  <span class="slider-edge-label edge-left">&larr; Prioritas {{ criteria[i].code }}</span>
+                  <span class="slider-edge-label edge-mid">Seimbang (1)</span>
+                  <span class="slider-edge-label edge-right">Prioritas {{ criteria[j].code }} &rarr;</span>
+                </div>
+                
+                <div class="slider-input-wrapper">
+                  <input type="range" class="ahp-slider" 
+                         id="slider_{{ i }}_{{ j }}" 
+                         data-i="{{ i }}" data-j="{{ j }}"
+                         min="-8" max="8" step="1" 
+                         value="{{ cur_val }}"
+                         aria-label="Perbandingan {{ criteria[i].name }} vs {{ criteria[j].name }}">
+                </div>
+
+                <div class="slider-scale-ticks">
+                  <span title="Mutlak (9x)">9x</span>
+                  <span title="Jelas (5x)">5x</span>
+                  <span title="Sedikit (3x)">3x</span>
+                  <span class="tick-center" title="Sama (1x)">1</span>
+                  <span title="Sedikit (3x)">3x</span>
+                  <span title="Jelas (5x)">5x</span>
+                  <span title="Mutlak (9x)">9x</span>
+                </div>
+              </div>
+
+              <div class="ahp-card-footer">
+                <div class="ahp-verdict" id="verdict_{{ i }}_{{ j }}">
+                  <!-- Teks diperbarui real-time via JS -->
+                </div>
+                <button type="button" class="btn-reset-pair" data-i="{{ i }}" data-j="{{ j }}" title="Kembalikan ke seimbang 1:1">Set Seimbang (1:1)</button>
+              </div>
+            </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- TAMPILAN 2: MODE TABEL MATRIKS (KLASIK) -->
+    <div id="view-matrix" class="view-panel" role="tabpanel" aria-labelledby="btn-mode-matrix">
+      <div class="card" style="margin-bottom:14px; padding:12px 16px;">
+        <p class="text-muted" style="margin:0; font-size:0.875rem;">
+          Format matriks perbandingan berpasangan segitiga atas (skala Saaty 1–9). Nilai sel otomatis tersinkronisasi dua arah dengan mode slider.
+        </p>
+      </div>
+      <div class="card table-card">
+        <div class="table-container">
+          <table class="data-table matriks">
+            <thead>
+              <tr><th></th>{% for c in criteria %}<th scope="col" title="{{ c.name }}">{{ c.code }}</th>{% endfor %}</tr>
+            </thead>
+            <tbody>
+            {% for i in range(n) %}
+              <tr>
+                <th scope="row">{{ criteria[i].code }} {{ criteria[i].name }}</th>
+                {% for j in range(n) %}
+                  {% if i == j %}<td class="diag">1</td>
+                  {% elif i < j %}
+                    <td>
+                      <select name="a_{{ i }}_{{ j }}" id="sel_{{ i }}_{{ j }}" data-i="{{ i }}" data-j="{{ j }}"
+                              aria-label="{{ criteria[i].name }} dibanding {{ criteria[j].name }}">
+                        {% for lbl in saaty_labels %}<option value="{{ lbl }}" {{ 'selected' if lbl == labels[(i, j)] }}>{{ lbl }}</option>{% endfor %}
+                      </select>
+                    </td>
+                  {% else %}
+                    <td class="recip" id="r_{{ i }}_{{ j }}">{{ reciprocal(labels[(j, i)]) }}</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tombol Aksi Form -->
+    <div class="form-actions-bar">
+      <button class="btn btn-primary" type="submit" name="aksi" value="simpan">Hitung &amp; Simpan Bobot AHP</button>
+      <button class="btn btn-secondary" type="submit" name="aksi" value="contoh" data-confirm-click="Ganti seluruh isian dengan matriks contoh standar yang konsisten?">Gunakan Matriks Standar</button>
+      <button class="btn btn-secondary" type="button" id="btn-reset-all">Reset Semua ke 1:1</button>
+    </div>
+
+    <div class="card" style="margin-top:16px; padding:14px 18px;">
+      <h3 class="card-title" style="font-size:0.95rem; margin-bottom:8px;">Keterangan Karakteristik Kriteria</h3>
+      <ul class="criteria-expl-list">
+        {% for c in criteria %}
+          <li><strong>{{ c.code }} ({{ c.name }})</strong>: {{ 'makin kecil nilainya makin diprioritaskan (Cost)' if c.type == 'cost' else 'makin besar nilainya makin diprioritaskan (Benefit)' }}.</li>
+        {% endfor %}
+      </ul>
+    </div>
   </form>
 
+  <!-- Kolom Samping: Hasil Perhitungan Konsistensi & Bobot -->
   <aside aria-labelledby="h-hasil">
-    <h2 id="h-hasil">Hasil perhitungan</h2>
-    {% if result %}
-      {{ cr_line(result.cr) }}
-      <p>
-        {% if result.consistent %}<strong>Konsisten.</strong> Bobot ini bisa dipakai untuk menghitung peringkat.
-        {% else %}<strong>Belum konsisten.</strong> CR harus 0,1 atau kurang. Perbaiki isian, lalu hitung ulang.{% endif %}
-      </p>
-      <dl>
-        <dt>λ maks</dt><dd>{{ result.lambda_max|angka(4) }}</dd>
-        <dt>CI</dt><dd>{{ result.ci|angka(4) }}</dd>
-        <dt>RI (n = 7)</dt><dd>{{ result.ri|angka(2) }}</dd>
-        <dt>CR</dt><dd>{{ result.cr|angka(4) }}</dd>
-      </dl>
-      <h3>Bobot kriteria</h3>
-      {{ weight_table(weight_rows) }}
-      {% if suspects %}
-      <h3>Isian yang paling menyimpang</h3>
-      <ul class="kecil">
-        {% for s in suspects %}<li>{{ s.pair }}: Anda mengisi <strong>{{ s.given }}</strong>, sedangkan isian lain condong ke sekitar <strong>{{ s.implied }}</strong>.</li>{% endfor %}
-      </ul>
+    <div class="card sticky-aside">
+      <h3 id="h-hasil" class="card-title" style="margin-bottom:12px;">Hasil Perhitungan AHP</h3>
+      {% if result %}
+        {{ cr_line(result.cr) }}
+        <p class="text-muted" style="font-size:0.875rem; margin:8px 0 14px;">
+          {% if result.consistent %}
+            <strong class="text-success">Konsisten (CR &le; 0,1).</strong> Matriks memenuhi uji konsistensi Saaty dan siap digunakan pada tahapan perankingan TOPSIS.
+          {% else %}
+            <strong class="text-error">Belum Konsisten (CR &gt; 0,1).</strong> Preferensi perbandingan bertentangan. Silakan sesuaikan slider atau terapkan rekomendasi di bawah.
+          {% endif %}
+        </p>
+
+        <div class="matrix-diagnostics">
+          <div class="diag-item"><span>&lambda; maks:</span> <strong>{{ result.lambda_max|angka(4) }}</strong></div>
+          <div class="diag-item"><span>CI (Consistency Index):</span> <strong>{{ result.ci|angka(4) }}</strong></div>
+          <div class="diag-item"><span>RI (Random Index n=7):</span> <strong>{{ result.ri|angka(2) }}</strong></div>
+          <div class="diag-item"><span>CR (Consistency Ratio):</span> <strong>{{ result.cr|angka(4) }}</strong></div>
+        </div>
+
+        <h4 style="font-size:0.875rem; margin:16px 0 8px;">Bobot Akhir Kriteria (Eigen Vector)</h4>
+        {{ weight_table(weight_rows) }}
+
+        {% if suspects %}
+        <div style="margin-top:16px;">
+          <h4 style="font-size:0.875rem; margin:0 0 8px; color:#b45309;">Rekomendasi Penyesuaian Inkonsistensi</h4>
+          <ul class="daftar-suspects">
+            {% for s in suspects %}
+            <li>
+              <span><strong>{{ s.pair }}</strong>: saat ini {{ s.given }}, perkiraan {{ s.implied }}.</span>
+              <button type="button" class="btn btn-secondary btn-xs btn-apply-implied" data-target-i="{{ s.i }}" data-target-j="{{ s.j }}" data-val="{{ s.implied }}" style="margin-top:4px;">Terapkan {{ s.implied }}</button>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      {% else %}
+        <p class="text-muted" style="font-size:0.875rem;">
+          Belum ada hasil perhitungan. Lakukan perbandingan kriteria di sebelah kiri, kemudian klik <strong>Hitung &amp; Simpan Bobot AHP</strong>.
+        </p>
       {% endif %}
-    {% else %}
-      <p>Belum ada hasil. Pilih nilai perbandingan lalu klik Hitung bobot.</p>
-    {% endif %}
+    </div>
   </aside>
 </div>
 {% endblock %}

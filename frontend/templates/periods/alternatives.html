@@ -5,44 +5,100 @@
 {% set active = 'alternatif' %}
 {% include "periods/_header.html" %}
 
-<p>UMKM yang lolos syarat awal bisa dikeluarkan dari perhitungan bila perlu. UMKM yang gugur (tanpa NIB atau usaha kurang dari 6 bulan) tidak bisa dipilih.
-  {% if nav.has_ranking %}<strong>Menyimpan pilihan baru menghapus peringkat yang sudah ada.</strong>{% endif %}</p>
+<div class="card info-box">
+  <div class="info-box-content">
+    <p>Pilih alternatif UMKM yang akan diikutsertakan dalam pemeringkatan prioritas bantuan. UMKM yang tidak memenuhi syarat awal (tanpa NIB atau lama usaha &lt; 6 bulan) berstatus gugur dan tidak dapat dipilih.</p>
+    {% if nav.has_ranking %}
+      <p class="text-warning" style="margin-top:6px; font-weight:500;">
+        Perhatian: Menyimpan pilihan alternatif baru akan mereset hasil peringkat TOPSIS yang telah dihitung sebelumnya.
+      </p>
+    {% endif %}
+  </div>
+</div>
 
 <form method="post">
   {{ csrf() }}
-  <div class="saring no-print">
-    <div class="field lebar"><label for="row-filter">Saring daftar</label><input id="row-filter" type="search" placeholder="Nama usaha, ID, jenis, atau kecamatan" autocomplete="off"></div>
-    <button class="btn" type="button" data-check="all">Pilih semua yang tampil</button>
-    <button class="btn" type="button" data-check="none">Kosongkan yang tampil</button>
+  
+  <div class="card filter-bar no-print">
+    <div class="filter-controls">
+      <div class="field filter-search">
+        <label for="row-filter">Pencarian Cepat</label>
+        <input id="row-filter" type="search" placeholder="Cari berdasarkan ID, nama usaha, jenis, atau kecamatan..." autocomplete="off">
+      </div>
+      <div class="filter-buttons">
+        <button class="btn btn-secondary btn-sm" type="button" data-check="all">Pilih Semua yang Tampil</button>
+        <button class="btn btn-secondary btn-sm" type="button" data-check="none">Kosongkan Semua</button>
+      </div>
+    </div>
   </div>
-  <div class="tabel gulir">
-    <table>
-      <thead>
-        <tr><th><span class="visually-hidden">Ikut dihitung</span></th><th>ID</th><th>Nama usaha</th><th>Kecamatan</th>
-          <th class="num" title="C1">Modal</th><th class="num" title="C2">Omzet</th><th class="num" title="C3">TK</th>
-          <th class="num" title="C4">Lama</th><th class="num" title="C5">Digital</th><th class="num" title="C6">Akses</th><th class="num" title="C7">Bantuan</th><th>Status</th></tr>
-      </thead>
-      <tbody>
-      {% for c in candidates %}
-        <tr class="{{ 'keluar' if c.status == 'gugur' }}" data-text="{{ (c.source_id ~ ' ' ~ c.nama_usaha ~ ' ' ~ (c.jenis_usaha or '') ~ ' ' ~ (c.kecamatan or ''))|lower }}">
-          <td><input type="checkbox" name="pilih" value="{{ c.umkm_id }}" aria-label="Hitung {{ c.nama_usaha }}"
-              {{ 'checked' if c.selected and c.status == 'lolos' }} {{ 'disabled' if c.status == 'gugur' }}></td>
-          <td class="nowrap">{{ c.source_id }}</td>
-          <td>{{ c.nama_usaha }}<span class="sub">{{ c.jenis_usaha or '-' }}</span></td>
-          <td>{{ c.kecamatan or '-' }}</td>
-          <td class="num nowrap">{{ c.c1|rupiah }}</td><td class="num nowrap">{{ c.c2|rupiah }}</td>
-          <td class="num">{{ c.c3|int }}</td><td class="num">{{ c.c4|int }}</td><td class="num">{{ c.c5|int }}</td>
-          <td class="num">{{ c.c6|int }}</td><td class="num">{{ c.c7|int }}</td>
-          <td>{% if c.status == 'gugur' %}Gugur<span class="sub">{{ c.reason }}</span>
-              {% else %}{{ 'Ikut dihitung' if c.selected else 'Dikeluarkan' }}{% endif %}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="baris-aksi">
-    <button class="btn utama" type="submit">Simpan pilihan (<span id="picked-count">{{ nav.selected }}</span> UMKM)</button>
-    <a class="btn" href="{{ url_for('periods.overview', period_id=period.id) }}">Batal</a>
+
+  <div class="card table-card">
+    <div class="table-container scrollable-table">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="check-col"><span class="visually-hidden">Pilih</span></th>
+            <th>ID</th>
+            <th>Nama Usaha</th>
+            <th>Kecamatan</th>
+            <th class="num" title="C1: Modal Usaha">C1 Modal</th>
+            <th class="num" title="C2: Omzet Bulanan">C2 Omzet</th>
+            <th class="num" title="C3: Tenaga Kerja">C3 TK</th>
+            <th class="num" title="C4: Lama Usaha (bulan)">C4 Lama</th>
+            <th class="num" title="C5: Tingkat Digitalisasi">C5 Digital</th>
+            <th class="num" title="C6: Akses Permodalan">C6 Akses</th>
+            <th class="num" title="C7: Riwayat Bantuan">C7 Bantuan</th>
+            <th>Status Kelayakan</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in candidates %}
+          <tr class="{{ 'row-disabled' if c.status == 'gugur' }}" data-text="{{ (c.source_id ~ ' ' ~ c.nama_usaha ~ ' ' ~ (c.jenis_usaha or '') ~ ' ' ~ (c.kecamatan or ''))|lower }}">
+            <td class="check-col">
+              <input type="checkbox" name="pilih" value="{{ c.umkm_id }}" aria-label="Hitung {{ c.nama_usaha }}"
+                {{ 'checked' if c.selected and c.status == 'lolos' }} {{ 'disabled' if c.status == 'gugur' }}>
+            </td>
+            <td class="nowrap font-mono">{{ c.source_id }}</td>
+            <td>
+              <span class="row-title">{{ c.nama_usaha }}</span>
+              <span class="row-sub">{{ c.jenis_usaha or '-' }}</span>
+            </td>
+            <td>{{ c.kecamatan or '-' }}</td>
+            <td class="num nowrap font-numeric">{{ c.c1|rupiah }}</td>
+            <td class="num nowrap font-numeric">{{ c.c2|rupiah }}</td>
+            <td class="num font-numeric">{{ c.c3|int }}</td>
+            <td class="num font-numeric">{{ c.c4|int }} bln</td>
+            <td class="num font-numeric">{{ c.c5|int }}</td>
+            <td class="num font-numeric">{{ c.c6|int }}</td>
+            <td class="num font-numeric">{{ c.c7|int }}</td>
+            <td>
+              {% if c.status == 'gugur' %}
+                <span class="badge badge-error">Gugur</span>
+                <span class="row-sub">{{ c.reason }}</span>
+              {% else %}
+                {% if c.selected %}
+                  <span class="badge badge-success">Terpilih</span>
+                {% else %}
+                  <span class="badge badge-neutral">Dilewati</span>
+                {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Sticky Action Bar di Bawah Form -->
+    <div class="table-action-footer">
+      <div class="action-info">
+        Jumlah UMKM Terpilih: <strong id="picked-count">{{ nav.selected }}</strong> unit usaha
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" type="submit">Simpan Pilihan Alternatif</button>
+        <a class="btn btn-secondary" href="{{ url_for('periods.overview', period_id=period.id) }}">Batal</a>
+      </div>
+    </div>
   </div>
 </form>
 {% endblock %}

@@ -1,73 +1,161 @@
 {% extends "base.html" %}
 {% from "_components.html" import csrf, weight_table with context %}
-{% block title %}Peringkat | {{ period.name }}{% endblock %}
+{% block title %}Hasil Peringkat Prioritas | {{ period.name }}{% endblock %}
 {% block content %}
 {% set active = 'peringkat' %}
 {% include "periods/_header.html" %}
 
 {% if not total %}
-  {% if not ahp %}
-    <h2>Bobot AHP belum dihitung</h2>
-    <p>Peringkat memakai bobot dari perbandingan antar-kriteria. Isi dulu perbandingannya.</p>
-    <a class="btn utama" href="{{ url_for('weighting.edit', period_id=period.id) }}">Isi bobot AHP</a>
-  {% elif not ahp.consistent %}
-    <h2>Bobot belum konsisten</h2>
-    <p>CR {{ ahp.cr|angka(4) }} melebihi batas 0,1, jadi bobot belum boleh dipakai. Perbaiki perbandingan kriteria.</p>
-    <a class="btn utama" href="{{ url_for('weighting.edit', period_id=period.id) }}">Perbaiki bobot</a>
-  {% elif not nav.selected %}
-    <h2>Belum ada alternatif yang dipilih</h2>
-    <p>Pilih minimal satu UMKM yang lolos syarat awal untuk dihitung.</p>
-    <a class="btn utama" href="{{ url_for('periods.alternatives', period_id=period.id) }}">Pilih alternatif</a>
-  {% else %}
-    <h2>Peringkat belum dihitung</h2>
-    <p>{{ nav.selected }} UMKM akan diperingkat dengan bobot AHP yang konsisten (CR {{ ahp.cr|angka(4) }}).</p>
-    <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">{{ csrf() }}<button class="btn utama" type="submit">Hitung peringkat</button></form>
-  {% endif %}
+  <div class="card empty-state-card" style="max-width: 540px; margin: 30px auto; text-align: center;">
+    {% if not ahp %}
+      <h3 class="empty-title">Bobot Kriteria AHP Belum Diisi</h3>
+      <p class="empty-desc">Proses perankingan memerlukan bobot kriteria yang valid. Silakan tentukan bobot melalui perbandingan berpasangan terlebih dahulu.</p>
+      <a class="btn btn-primary" href="{{ url_for('weighting.edit', period_id=period.id) }}">Isi Bobot Kriteria AHP</a>
+    {% elif not ahp.consistent %}
+      <h3 class="empty-title">Bobot Kriteria Belum Konsisten</h3>
+      <p class="empty-desc">Nilai Rasio Konsistensi (CR = {{ ahp.cr|angka(4) }}) masih melampaui batas toleransi 0,1000. Lakukan penyesuaian nilai perbandingan.</p>
+      <a class="btn btn-primary" href="{{ url_for('weighting.edit', period_id=period.id) }}">Perbaiki Bobot AHP</a>
+    {% elif not nav.selected %}
+      <h3 class="empty-title">Belum Ada Alternatif UMKM Dipilih</h3>
+      <p class="empty-desc">Pilih minimal satu kandidat UMKM yang memenuhi syarat awal untuk diperingkat.</p>
+      <a class="btn btn-primary" href="{{ url_for('periods.alternatives', period_id=period.id) }}">Pilih Alternatif</a>
+    {% else %}
+      <h3 class="empty-title">Siap untuk Pemeringkatan TOPSIS</h3>
+      <p class="empty-desc">Sebanyak <strong>{{ nav.selected }} UMKM</strong> siap dihitung nilai kedekatan relatifnya menggunakan bobot AHP yang konsisten (CR = {{ ahp.cr|angka(4) }}).</p>
+      <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">
+        {{ csrf() }}
+        <button class="btn btn-primary" type="submit">Jalankan Perhitungan Peringkat</button>
+      </form>
+    {% endif %}
+  </div>
 {% else %}
-  <div class="dua">
-    <section aria-labelledby="h-w">
-      <h2 id="h-w">Bobot yang dipakai</h2>
-      {% set wrows = [] %}
-      {% for c in criteria %}{% set _ = wrows.append({'code': c.code, 'name': c.name, 'type': c.type, 'weight': ahp.weights[loop.index0]}) %}{% endfor %}
-      {{ weight_table(wrows) }}
-      <p class="catatan">CR {{ ahp.cr|angka(4) }}, konsisten.</p>
-      <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">{{ csrf() }}<button class="btn kecil" type="submit">Hitung ulang</button></form>
-    </aside>
+  <!-- Ringkasan Bobot Kriteria yang Digunakan -->
+  <div class="card section-card" style="margin-bottom: 20px;">
+    <div class="card-header">
+      <h2 class="card-title">Bobot Kriteria AHP yang Digunakan</h2>
+      <form method="post" action="{{ url_for('ranking.compute', period_id=period.id) }}">
+        {{ csrf() }}
+        <button class="btn btn-secondary btn-xs" type="submit">Hitung Ulang TOPSIS</button>
+      </form>
+    </div>
+    <div class="grid-2-col" style="align-items: center;">
+      <div>
+        {% set wrows = [] %}
+        {% for c in criteria %}{% set _ = wrows.append({'code': c.code, 'name': c.name, 'type': c.type, 'weight': ahp.weights[loop.index0]}) %}{% endfor %}
+        {{ weight_table(wrows) }}
+      </div>
+      <div class="consistency-status-box">
+        <div class="consistency-badge-row">
+          <span class="badge badge-success badge-lg">CR = {{ ahp.cr|angka(4) }} (Konsisten)</span>
+        </div>
+        <p class="text-muted" style="font-size:0.875rem; margin:8px 0 0;">
+          Nilai rasio konsistensi matriks Saaty memenuhi kriteria validitas ilmiah (&le; 0,1000).
+        </p>
+      </div>
+    </div>
   </div>
 
-  <h2>Tabel peringkat</h2>
-  <form class="saring" method="get" role="search">
-    <div class="field lebar"><label for="q">Cari nama usaha atau ID</label><input id="q" name="q" type="search" value="{{ q }}"></div>
-    <div class="field"><label for="kecamatan">Kecamatan</label>
-      <select id="kecamatan" name="kecamatan"><option value="">Semua</option>
-        {% for k in kecamatan_options %}<option value="{{ k }}" {{ 'selected' if k == kecamatan }}>{{ k }}</option>{% endfor %}</select></div>
-    <div class="field"><label for="jenis">Jenis usaha</label>
-      <select id="jenis" name="jenis"><option value="">Semua</option>
-        {% for j in jenis_options %}<option value="{{ j }}" {{ 'selected' if j == jenis }}>{{ j }}</option>{% endfor %}</select></div>
-    <button class="btn" type="submit">Saring</button>
-    {% if q or kecamatan or jenis %}<a href="{{ url_for('ranking.show', period_id=period.id) }}">Hapus filter</a>{% endif %}
-  </form>
+  <!-- Filter & Pencarian Hasil -->
+  <div class="card filter-bar">
+    <div class="card-header" style="margin-bottom:12px; padding:0; border:0;">
+      <div>
+        <h2 class="card-title">Tabel Hasil Pemeringkatan Prioritas (TOPSIS)</h2>
+        <span class="text-muted" style="font-size:0.875rem;">Total {{ total }} UMKM terdaftar dalam evaluasi periode ini.</span>
+      </div>
+    </div>
 
+    <form class="saring" method="get" role="search">
+      <div class="field filter-grow">
+        <label for="q">Pencarian Nama Usaha atau ID</label>
+        <input id="q" name="q" type="search" placeholder="Masukkan kata kunci pencarian..." value="{{ q }}">
+      </div>
+      <div class="field">
+        <label for="kecamatan">Kecamatan</label>
+        <select id="kecamatan" name="kecamatan">
+          <option value="">Semua Kecamatan</option>
+          {% for k in kecamatan_options %}
+            <option value="{{ k }}" {{ 'selected' if k == kecamatan }}>{{ k }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="jenis">Jenis Usaha</label>
+        <select id="jenis" name="jenis">
+          <option value="">Semua Jenis Usaha</option>
+          {% for j in jenis_options %}
+            <option value="{{ j }}" {{ 'selected' if j == jenis }}>{{ j }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-primary" type="submit">Saring</button>
+        {% if q or kecamatan or jenis %}
+          <a class="btn btn-secondary" href="{{ url_for('ranking.show', period_id=period.id) }}">Reset Filter</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Tabel Peringkat Formal -->
   {% if rows %}
-  <div class="tabel">
-    <table>
-      <thead><tr><th class="num">Peringkat</th><th>ID</th><th>Nama usaha</th><th>Jenis</th><th>Kecamatan</th>
-        <th class="num" title="Jarak ke solusi ideal positif">D+</th><th class="num" title="Jarak ke solusi ideal negatif">D-</th><th class="num">Nilai V</th></tr></thead>
-      <tbody>
-      {% for r in rows %}
-        <tr class="{{ 'rank-1' if r.rank == 1 }}">
-          <td class="num">{{ r.rank }}</td><td class="nowrap">{{ r.source_id }}</td><td>{{ r.nama_usaha }}</td>
-          <td>{{ r.jenis_usaha or '-' }}</td><td>{{ r.kecamatan or '-' }}</td>
-          <td class="num">{{ r.d_plus|angka(4) }}</td><td class="num">{{ r.d_minus|angka(4) }}</td><td class="num">{{ r.v|angka(4) }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="card table-card" style="margin-top:14px;">
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="num">Peringkat</th>
+            <th>ID Usaha</th>
+            <th>Nama Usaha</th>
+            <th>Jenis Usaha</th>
+            <th>Kecamatan</th>
+            <th class="num" title="Jarak ke solusi ideal positif">D+ (Ideal Positif)</th>
+            <th class="num" title="Jarak ke solusi ideal negatif">D- (Ideal Negatif)</th>
+            <th class="num" title="Nilai Preferensi Kedekatan Relatif">Nilai Preferensi (V)</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+          <tr class="{{ 'rank-top' if r.rank == 1 }}">
+            <td class="num">
+              {% if r.rank == 1 %}
+                <span class="badge badge-primary font-bold">1</span>
+              {% else %}
+                <span class="rank-number">{{ r.rank }}</span>
+              {% endif %}
+            </td>
+            <td class="nowrap font-mono text-muted">{{ r.source_id }}</td>
+            <td>
+              <span class="row-title">{{ r.nama_usaha }}</span>
+              {% if r.rank == 1 %}
+                <span class="badge badge-success badge-xs" style="margin-left: 6px;">Prioritas Utama</span>
+              {% endif %}
+            </td>
+            <td>{{ r.jenis_usaha or '-' }}</td>
+            <td>{{ r.kecamatan or '-' }}</td>
+            <td class="num font-numeric">{{ r.d_plus|angka(4) }}</td>
+            <td class="num font-numeric">{{ r.d_minus|angka(4) }}</td>
+            <td class="num font-numeric">
+              <strong class="preference-score">{{ r.v|angka(4) }}</strong>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-meta-footer">
+      <span>Menampilkan <strong>{{ rows|length }}</strong> dari <strong>{{ matched }}</strong> data yang cocok (total evaluasi: {{ total }}).</span>
+      {% if not show_all and matched > rows|length %}
+        <a class="text-link" href="{{ url_for('ranking.show', period_id=period.id, q=q, kecamatan=kecamatan, jenis=jenis, tampil='semua') }}">Tampilkan Semua Data ({{ matched }}) &rarr;</a>
+      {% endif %}
+    </div>
   </div>
-  <p class="catatan">Menampilkan {{ rows|length }} dari {{ matched }} UMKM{% if matched != total %} yang cocok (total {{ total }}){% endif %}.
-    {% if not show_all and matched > rows|length %}<a href="{{ url_for('ranking.show', period_id=period.id, q=q, kecamatan=kecamatan, jenis=jenis, tampil='semua') }}">Tampilkan semua</a>{% endif %}</p>
   {% else %}
-  <p>Tidak ada UMKM yang cocok. Ubah kata kunci atau hapus filter.</p>
+  <div class="card empty-state-card" style="margin-top:14px; text-align:center;">
+    <p class="empty-title">Tidak ada data yang cocok dengan kriteria pencarian</p>
+    <p class="empty-desc">Silakan ubah kata kunci atau bersihkan filter di atas.</p>
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('ranking.show', period_id=period.id) }}">Bersihkan Filter</a>
+  </div>
   {% endif %}
 {% endif %}
 {% endblock %}

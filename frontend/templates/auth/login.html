@@ -1,15 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Masuk{% endblock %}
+{% block title %}Masuk ke Sistem{% endblock %}
 {% block content %}
-<form class="form-sempit" method="post" action="{{ url_for('auth.login') }}">
-  <h1>Masuk</h1>
-  {% if error %}<p class="pesan pesan-error" role="alert">{{ error }}</p>{% endif %}
-  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-  <input type="hidden" name="next" value="{{ next }}">
-  <div class="field"><label for="username">Nama pengguna</label>
-    <input id="username" name="username" type="text" autocomplete="username" required autofocus></div>
-  <div class="field"><label for="password">Kata sandi</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" required></div>
-  <button class="btn utama" type="submit">Masuk</button>
-</form>
+<div class="login-wrapper">
+  <div class="card login-card">
+    <div class="login-header">
+      <div class="login-emblem">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <h1>Masuk ke Sistem</h1>
+      <p class="login-sub">Sistem Pendukung Keputusan Prioritas Bantuan UMKM Surakarta</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error" role="alert">
+      <div class="alert-text">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <form class="login-form" method="post" action="{{ url_for('auth.login') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <div class="field">
+        <label for="username">Nama Pengguna</label>
+        <input id="username" name="username" type="text" autocomplete="username" placeholder="Masukkan nama pengguna" required autofocus>
+      </div>
+
+      <div class="field">
+        <label for="password">Kata Sandi</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Masukkan kata sandi" required>
+      </div>
+
+      <button class="btn btn-primary btn-block" type="submit">Masuk</button>
+    </form>
+
+    <div class="login-footer-info">
+      <p class="meta-label">Akun Akses Bawaan (Simulasi):</p>
+      <div class="demo-accounts">
+        <span>Administrator: <code>admin / admin123</code></span>
+        <span>Tim Penilai: <code>penilai / penilai123</code></span>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

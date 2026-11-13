@@ -92,4 +92,5 @@ def _jinja_csrf_token(ctx):
 templates.env.globals.update(url_for=_jinja_url_for, csrf_token=_jinja_csrf_token)
 templates.env.filters.update(
     rupiah=fmt.rupiah, angka=fmt.angka, persen=fmt.persen, tanggal=fmt.tanggal,
-    status_label=fmt.status_label, role_label=lambda r: ROLE_LABELS.get(r, r))
+    status_label=fmt.status_label, saaty_to_slider=fmt.saaty_to_slider,
+    role_label=lambda r: ROLE_LABELS.get(r, r))

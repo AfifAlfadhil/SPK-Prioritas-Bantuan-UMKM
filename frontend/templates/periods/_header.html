@@ -1,16 +1,51 @@
-{# Kepala halaman periode. Set `active` sebelum include: ringkasan, alternatif, bobot, peringkat. #}
-<div class="kepala">
-  <div>
-    <h1>{{ period.name }}</h1>
-    <p class="redup">Dibuat {{ period.created_at|tanggal }}. Status: {{ period.status|status_label }}.</p>
+{# Header Halaman Periode Seleksi Formal #}
+<div class="period-header">
+  <div class="period-title-wrap">
+    <div class="period-meta-badge">
+      <span class="badge {% if period.status == 'selesai' %}badge-success{% elif period.status == 'dinilai' %}badge-warning{% else %}badge-neutral{% endif %}">
+        {{ period.status|status_label }}
+      </span>
+      <span class="period-created">Dibuat: {{ period.created_at|tanggal }}</span>
+    </div>
+    <h1 class="page-title">{{ period.name }}</h1>
   </div>
 </div>
-<ul class="tahap no-print" aria-label="Tahap seleksi">
-  <li><a href="{{ url_for('periods.overview', period_id=period.id) }}" {% if active == 'ringkasan' %}aria-current="page"{% endif %}>Ringkasan</a></li>
-  <li><a href="{{ url_for('periods.alternatives', period_id=period.id) }}" {% if active == 'alternatif' %}aria-current="page"{% endif %}>1. Alternatif</a>
-    <span class="status">({{ nav.selected ~ ' dipilih' if nav.selected else 'belum dipilih' }})</span></li>
-  <li><a href="{{ url_for('weighting.edit', period_id=period.id) }}" {% if active == 'bobot' %}aria-current="page"{% endif %}>2. Bobot AHP</a>
-    <span class="status">({{ 'konsisten' if nav.weights_ok else ('belum konsisten' if nav.has_weights else 'belum diisi') }})</span></li>
-  <li><a href="{{ url_for('ranking.show', period_id=period.id) }}" {% if active == 'peringkat' %}aria-current="page"{% endif %}>3. Peringkat</a>
-    <span class="status">({{ 'sudah dihitung' if nav.has_ranking else 'belum dihitung' }})</span></li>
-</ul>
+
+<!-- Stepper Alur SPK Formal -->
+<nav class="stepper-nav no-print" aria-label="Tahapan seleksi">
+  <ul class="stepper">
+    <li class="stepper-item {% if active == 'ringkasan' %}is-active{% endif %}">
+      <a href="{{ url_for('periods.overview', period_id=period.id) }}" {% if active == 'ringkasan' %}aria-current="page"{% endif %}>
+        <span class="step-num">0</span>
+        <span class="step-label">Ringkasan</span>
+      </a>
+    </li>
+    <li class="stepper-item {% if active == 'alternatif' %}is-active{% endif %}">
+      <a href="{{ url_for('periods.alternatives', period_id=period.id) }}" {% if active == 'alternatif' %}aria-current="page"{% endif %}>
+        <span class="step-num">1</span>
+        <span class="step-label">Alternatif UMKM</span>
+        <span class="step-badge {% if nav.selected %}badge-active{% endif %}">
+          {{ nav.selected ~ ' terpilih' if nav.selected else 'Belum dipilih' }}
+        </span>
+      </a>
+    </li>
+    <li class="stepper-item {% if active == 'bobot' %}is-active{% endif %}">
+      <a href="{{ url_for('weighting.edit', period_id=period.id) }}" {% if active == 'bobot' %}aria-current="page"{% endif %}>
+        <span class="step-num">2</span>
+        <span class="step-label">Bobot Kriteria (AHP)</span>
+        <span class="step-badge {% if nav.weights_ok %}badge-success{% elif nav.has_weights %}badge-warning{% endif %}">
+          {{ 'Konsisten' if nav.weights_ok else ('Belum konsisten' if nav.has_weights else 'Belum diisi') }}
+        </span>
+      </a>
+    </li>
+    <li class="stepper-item {% if active == 'peringkat' %}is-active{% endif %}">
+      <a href="{{ url_for('ranking.show', period_id=period.id) }}" {% if active == 'peringkat' %}aria-current="page"{% endif %}>
+        <span class="step-num">3</span>
+        <span class="step-label">Hasil Peringkat (TOPSIS)</span>
+        <span class="step-badge {% if nav.has_ranking %}badge-success{% endif %}">
+          {{ 'Sudah dihitung' if nav.has_ranking else 'Belum dihitung' }}
+        </span>
+      </a>
+    </li>
+  </ul>
+</nav>

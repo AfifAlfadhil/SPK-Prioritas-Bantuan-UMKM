@@ -2,62 +2,114 @@
 {% from "_components.html" import csrf, pagination with context %}
 {% block title %}Data UMKM{% endblock %}
 {% block content %}
-<div class="kepala">
+<div class="page-header">
   <div>
-    <h1>Data UMKM</h1>
-    <p class="redup">{{ total|angka(0) }} UMKM{% if q or kecamatan or jenis %} cocok dengan pencarian{% else %} tersimpan{% endif %}.
-      Data dibaca langsung dari database.</p>
+    <h1 class="page-title">Direktori Data UMKM Surakarta</h1>
+    <p class="page-desc">
+      Total tersimpan <strong>{{ total|angka(0) }} unit UMKM</strong>{% if q or kecamatan or jenis %} (hasil filter pencarian){% endif %} terdata di database resmi Kota Surakarta.
+    </p>
   </div>
 </div>
 
-<form class="saring" method="get" action="{{ url_for('umkm.index') }}" role="search">
-  <div class="field lebar"><label for="q">Cari nama usaha, pemilik, atau ID</label><input id="q" name="q" type="search" value="{{ q }}"></div>
-  <div class="field"><label for="kecamatan">Kecamatan</label>
-    <select id="kecamatan" name="kecamatan"><option value="">Semua</option>
-      {% for k in facets.kecamatan %}<option value="{{ k }}" {{ 'selected' if k == kecamatan }}>{{ k }}</option>{% endfor %}</select></div>
-  <div class="field"><label for="jenis">Jenis usaha</label>
-    <select id="jenis" name="jenis"><option value="">Semua</option>
-      {% for j in facets.jenis %}<option value="{{ j }}" {{ 'selected' if j == jenis }}>{{ j }}</option>{% endfor %}</select></div>
-  <button class="btn" type="submit">Cari</button>
-  {% if q or kecamatan or jenis %}<a href="{{ url_for('umkm.index') }}">Hapus filter</a>{% endif %}
-</form>
+<div class="card filter-bar">
+  <form class="saring" method="get" action="{{ url_for('umkm.index') }}" role="search">
+    <div class="field filter-grow">
+      <label for="q">Pencarian Nama Usaha, Pemilik, atau ID</label>
+      <input id="q" name="q" type="search" placeholder="Contoh: Batik, Kuliner, atau nomor ID..." value="{{ q }}">
+    </div>
+    <div class="field">
+      <label for="kecamatan">Kecamatan</label>
+      <select id="kecamatan" name="kecamatan">
+        <option value="">Semua Kecamatan</option>
+        {% for k in facets.kecamatan %}
+          <option value="{{ k }}" {{ 'selected' if k == kecamatan }}>{{ k }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="jenis">Jenis Usaha</label>
+      <select id="jenis" name="jenis">
+        <option value="">Semua Jenis Usaha</option>
+        {% for j in facets.jenis %}
+          <option value="{{ j }}" {{ 'selected' if j == jenis }}>{{ j }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="submit">Cari Data</button>
+      {% if q or kecamatan or jenis %}
+        <a class="btn btn-secondary" href="{{ url_for('umkm.index') }}">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
 
 {% if rows %}
-<div class="tabel">
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th><th>Nama usaha</th><th>Jenis</th><th>Kecamatan</th><th>NIB</th>
-        <th class="num" title="C1">Modal</th><th class="num" title="C2">Omzet/bulan</th>
-        <th class="num" title="C3">Tenaga kerja</th><th class="num" title="C4">Lama usaha (bulan)</th>
-        <th class="num" title="C5">Digital</th><th class="num" title="C6">Akses modal</th><th class="num" title="C7">Bantuan</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for u in rows %}
-      <tr>
-        <td class="nowrap">{{ u.source_id }}</td>
-        <td>{{ u.nama_usaha }}<span class="sub">{{ u.pemilik or '-' }}</span></td>
-        <td>{{ u.jenis_usaha or '-' }}</td>
-        <td>{{ u.kecamatan or '-' }}<span class="sub">{{ u.kelurahan or '' }}</span></td>
-        <td>{{ 'Ada' if u.nib else 'Tidak ada' }}</td>
-        <td class="num nowrap">{{ u.modal_usaha|rupiah }}</td>
-        <td class="num nowrap">{{ u.omzet_bulanan|rupiah }}</td>
-        <td class="num">{{ u.jumlah_tenaga_kerja }}</td>
-        <td class="num">{{ u.lama_usaha_bulan }}</td>
-        <td class="num">{{ u.tingkat_digitalisasi }}</td>
-        <td class="num">{{ u.akses_permodalan }}</td>
-        <td class="num">{{ u.riwayat_bantuan }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+<div class="card table-card" style="margin-top:14px;">
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nama Usaha &amp; Pemilik</th>
+          <th>Jenis Usaha</th>
+          <th>Kecamatan</th>
+          <th>Status NIB</th>
+          <th class="num" title="C1: Modal Usaha">C1 Modal</th>
+          <th class="num" title="C2: Omzet Bulanan">C2 Omzet</th>
+          <th class="num" title="C3: Tenaga Kerja">C3 TK</th>
+          <th class="num" title="C4: Lama Usaha (bulan)">C4 Lama</th>
+          <th class="num" title="C5: Tingkat Digitalisasi">C5 Digital</th>
+          <th class="num" title="C6: Akses Permodalan">C6 Akses</th>
+          <th class="num" title="C7: Riwayat Bantuan">C7 Bantuan</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for u in rows %}
+        <tr>
+          <td class="nowrap font-mono text-muted">{{ u.source_id }}</td>
+          <td>
+            <span class="row-title">{{ u.nama_usaha }}</span>
+            <span class="row-sub">Pemilik: {{ u.pemilik or '-' }}</span>
+          </td>
+          <td>{{ u.jenis_usaha or '-' }}</td>
+          <td>
+            {{ u.kecamatan or '-' }}
+            <span class="row-sub">{{ u.kelurahan or '' }}</span>
+          </td>
+          <td>
+            {% if u.nib %}
+              <span class="badge badge-success">Ada NIB</span>
+            {% else %}
+              <span class="badge badge-error">Tidak Ada</span>
+            {% endif %}
+          </td>
+          <td class="num nowrap font-numeric">{{ u.modal_usaha|rupiah }}</td>
+          <td class="num nowrap font-numeric">{{ u.omzet_bulanan|rupiah }}</td>
+          <td class="num font-numeric">{{ u.jumlah_tenaga_kerja }} org</td>
+          <td class="num font-numeric">{{ u.lama_usaha_bulan }} bln</td>
+          <td class="num font-numeric">{{ u.tingkat_digitalisasi }}</td>
+          <td class="num font-numeric">{{ u.akses_permodalan }}</td>
+          <td class="num font-numeric">{{ u.riwayat_bantuan }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="table-meta-footer">
+    {{ pagination(page, pages, 'umkm.index') }}
+  </div>
 </div>
-{{ pagination(page, pages, 'umkm.index') }}
 {% elif q or kecamatan or jenis %}
-<p>Tidak ada UMKM yang cocok. Ubah kata kunci atau hapus filter untuk melihat semua data.</p>
+<div class="card empty-state-card" style="margin-top:14px; text-align:center;">
+  <p class="empty-title">Tidak ada UMKM yang sesuai dengan kriteria pencarian</p>
+  <p class="empty-desc">Silakan ubah kata kunci atau hapus filter untuk menampilkan seluruh data.</p>
+  <a class="btn btn-secondary btn-sm" href="{{ url_for('umkm.index') }}">Tampilkan Semua Data</a>
+</div>
 {% else %}
-<h2>Belum ada data UMKM</h2>
-<p>Data UMKM disediakan oleh pengelola database.</p>
+<div class="card empty-state-card" style="margin-top:14px; text-align:center;">
+  <p class="empty-title">Belum ada data UMKM</p>
+  <p class="empty-desc">Data profil UMKM disediakan dan diperbarui oleh pengelola database.</p>
+</div>
 {% endif %}
 {% endblock %}

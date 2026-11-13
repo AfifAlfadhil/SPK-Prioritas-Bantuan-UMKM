@@ -59,5 +59,13 @@ def reciprocal_label(label: str) -> str:
     return label[2:] if label.startswith("1/") else ("1" if label == "1" else f"1/{label}")
 
 
+def saaty_to_slider(label: str) -> int:
+    """Konversi label Saaty ('9', '1', '1/3') ke nilai slider (-8..+8)."""
+    try:
+        return SAATY_LABELS.index(str(label).strip()) - 8
+    except ValueError:
+        return 0
+
+
 def status_label(status: str) -> str:
     return {"draft": "Belum dihitung", "dihitung": "Sudah dihitung"}.get(status, status)

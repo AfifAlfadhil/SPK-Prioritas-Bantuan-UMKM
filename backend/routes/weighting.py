@@ -60,7 +60,8 @@ def edit(request: Request, form=Depends(read_form), period=Depends(period_or_404
     if result and not result["consistent"] and saved:
         matrix = ahp.matrix_from_upper(N_CRITERIA, saved)
         for s in ahp.inconsistent_pairs(matrix, result["weights"]):
-            suspects.append({"pair": f"{CODES[s['i']]} dibanding {CODES[s['j']]}",
+            suspects.append({"i": s["i"], "j": s["j"],
+                             "pair": f"{CODES[s['i']]} dibanding {CODES[s['j']]}",
                              "given": fmt.saaty_label(s["given"]), "implied": fmt.saaty_label(s["implied"])})
 
     weight_rows = []

@@ -4,27 +4,64 @@
 
 {% macro pagination(page, pages, endpoint) %}
 {% if pages > 1 %}
-<p class="halaman" aria-label="Halaman">
-  {% if page > 1 %}<a href="{{ url_for(endpoint, **dict(query, hal=page - 1)) }}">Sebelumnya</a>{% endif %}
-  <span>Halaman {{ page }} dari {{ pages }}</span>
-  {% if page < pages %}<a href="{{ url_for(endpoint, **dict(query, hal=page + 1)) }}">Berikutnya</a>{% endif %}
-</p>
+<div class="pagination-wrapper" aria-label="Navigasi Halaman">
+  <div class="pagination-buttons">
+    {% if page > 1 %}
+      <a class="btn btn-secondary btn-xs" href="{{ url_for(endpoint, **dict(query, hal=page - 1)) }}">&larr; Sebelumnya</a>
+    {% else %}
+      <span class="btn btn-secondary btn-xs btn-disabled">&larr; Sebelumnya</span>
+    {% endif %}
+    {% if page < pages %}
+      <a class="btn btn-secondary btn-xs" href="{{ url_for(endpoint, **dict(query, hal=page + 1)) }}">Berikutnya &rarr;</a>
+    {% else %}
+      <span class="btn btn-secondary btn-xs btn-disabled">Berikutnya &rarr;</span>
+    {% endif %}
+  </div>
+  <span class="pagination-status">Halaman <strong>{{ page }}</strong> dari <strong>{{ pages }}</strong></span>
+</div>
 {% endif %}
 {% endmacro %}
 
 {# Tabel bobot kriteria. rows: code, name, type, weight #}
 {% macro weight_table(rows) %}
-<div class="tabel"><table>
-  <thead><tr><th>Kode</th><th>Kriteria</th><th>Jenis</th><th class="num">Bobot</th></tr></thead>
-  <tbody>{% for r in rows %}
-    <tr><td>{{ r.code }}</td><td>{{ r.name }}</td><td>{{ 'cost' if r.type == 'cost' else 'benefit' }}</td><td class="num">{{ r.weight|persen(1) }}</td></tr>
-  {% endfor %}</tbody>
-</table></div>
+<div class="table-container">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Kode</th>
+        <th>Nama Kriteria</th>
+        <th>Sifat</th>
+        <th class="num">Bobot Hasil AHP</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="font-mono text-muted"><strong>{{ r.code }}</strong></td>
+        <td>{{ r.name }}</td>
+        <td>
+          <span class="badge {% if r.type == 'cost' %}badge-warning{% else %}badge-info{% endif %}">
+            {{ 'Cost (Biaya)' if r.type == 'cost' else 'Benefit (Manfaat)' }}
+          </span>
+        </td>
+        <td class="num font-numeric">
+          <strong>{{ r.weight|persen(1) }}</strong>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endmacro %}
 
 {# Satu baris hasil konsistensi: angka CR, batas, dan putusannya. #}
 {% macro cr_line(cr) %}
-<p class="cr">CR {{ cr|angka(4) }} (batas 0,1):
-  {% if cr <= 0.1 %}<span class="st-ok">konsisten</span>{% else %}<span class="st-bad">belum konsisten</span>{% endif %}</p>
+<div class="consistency-result-bar">
+  <span>Rasio Konsistensi (CR): <strong>{{ cr|angka(4) }}</strong> <span class="text-muted">(ambang toleransi &le; 0,1000)</span></span>
+  {% if cr <= 0.1 %}
+    <span class="badge badge-success">Konsisten (Valid)</span>
+  {% else %}
+    <span class="badge badge-error">Belum Konsisten</span>
+  {% endif %}
+</div>
 {% endmacro %}
-
